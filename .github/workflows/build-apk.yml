@@ -1,0 +1,43 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Мои исправления
+        uses: actions/checkout@v4
+        with:
+          path: mine
+
+      - name: Исходники v0.1.0 (там ещё есть демо-приложение)
+        uses: actions/checkout@v4
+        with:
+          repository: beeping-io/beeping-android
+          ref: v0.1.0
+          path: src
+
+      - name: Подменить файлы на исправленные
+        run: |
+          D=src/AndroidBeepingCore/src/main
+          cp mine/LocalEncoder.kt mine/BeepingClient.kt mine/BeepingTimberTree.kt $D/java/com/beeping/AndroidBeepingCore/
+          cp mine/AndroidManifest.xml $D/AndroidManifest.xml
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Сборка APK
+        working-directory: src
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon :app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beeping-apk
+          path: src/app/build/outputs/apk/debug/*.apk
