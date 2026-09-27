@@ -26,6 +26,25 @@ jobs:
           cp mine/LocalEncoder.kt mine/BeepingClient.kt mine/BeepingTimberTree.kt $D/java/com/beeping/AndroidBeepingCore/
           cp mine/AndroidManifest.xml $D/AndroidManifest.xml
 
+      - name: Исправить запуск демо-приложения (без облачных ключей оно падало)
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          base = pathlib.Path("src/app/src/main/java/com/beeping/sample")
+          f = base / "SampleUiState.kt"
+          t = f.read_text()
+          assert "val env: SampleEnv = SampleEnv.DEV" in t
+          f.write_text(t.replace("val env: SampleEnv = SampleEnv.DEV", "val env: SampleEnv = SampleEnv.LOCAL"))
+          f = base / "SampleAppViewModel.kt"
+          t = f.read_text()
+          old = ".mode(env.toMode())"
+          new = (".mode(env.toMode().let { m -> if (m is BeepingMode.Cloud && "
+                 "(m.apiKey.isBlank() || !m.endpoint.startsWith(\"https://\"))) BeepingMode.Local else m })")
+          assert old in t
+          f.write_text(t.replace(old, new))
+          print("sample app patched")
+          PY
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
